@@ -84,17 +84,21 @@ class TrendingApp(Base):
 
 
 class Keyword(Base):
-    """A researched ASO keyword (Requirement 3)."""
+    """A researched ASO keyword (Requirement 3).
+
+    Deliberately has no uniqueness constraint on (term, platform,
+    captured_at): unlike TrendingApp's chart snapshots (one fixed rank slot
+    per app per capture), the same keyword term can legitimately surface
+    from multiple different seed terms within a single research run — each
+    row's `related_apps` records which seed produced it.
+    """
 
     __tablename__ = "keywords"
-    __table_args__ = (
-        UniqueConstraint("term", "platform", "captured_at", name="uq_keyword_snapshot"),
-    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     term: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     platform: Mapped[Platform] = mapped_column(Enum(Platform), nullable=False)
-    search_volume: Mapped[int] = mapped_column(Integer, nullable=True)
+    search_volume: Mapped[float] = mapped_column(Float, nullable=True)
     difficulty_score: Mapped[float] = mapped_column(Float, nullable=True)  # 0-100, higher = more competitive
     opportunity_score: Mapped[float] = mapped_column(Float, nullable=True)  # derived: volume vs difficulty
     related_apps: Mapped[dict] = mapped_column(JSON, nullable=True)  # list of app ids ranking for this term

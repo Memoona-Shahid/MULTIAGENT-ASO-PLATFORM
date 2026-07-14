@@ -61,9 +61,10 @@ def health_runtime() -> dict:
 
 
 # --- Routers ---
-from app.api import app_store, google_play  # noqa: E402
+from app.api import app_store, google_play, keywords  # noqa: E402
 
 app.include_router(app_store.router, prefix="/api/app-store", tags=["app-store"])
 app.include_router(google_play.router, prefix="/api/google-play", tags=["google-play"])
+app.include_router(keywords.router, prefix="/api/keywords", tags=["keywords"])
 
 # --- Routers from future modules get included here ---

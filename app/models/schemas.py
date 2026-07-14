@@ -41,10 +41,18 @@ class KeywordOut(ORMBase):
     id: int
     term: str
     platform: Platform
-    search_volume: Optional[int] = None
+    search_volume: Optional[float] = None
     difficulty_score: Optional[float] = None
     opportunity_score: Optional[float] = None
     captured_at: datetime
+
+
+class KeywordResearchRequest(BaseModel):
+    seed_terms: list[str] = Field(..., min_length=1, description="Seed terms to expand via autocomplete.")
+    platforms: Optional[list[Platform]] = Field(
+        default=None, description="Defaults to both App Store and Google Play if omitted."
+    )
+    suggestions_per_seed: int = Field(default=10, ge=1, le=50)
 
 
 # ---------- Competitors ----------
