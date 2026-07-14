@@ -1,0 +1,17 @@
+rigin  git@github-personal:Memoona-Shahid/MULTIAGENT-ASO-PLATFORM.git (fetch)
+origin  git@github-personal:Memoona-Shahid/MULTIAGENT-ASO-PLATFORM.git (push)
+(venv) PS C:\Users\User\Documents\OFFICE\ai_aso_platform> git push
+Everything up-to-date
+(venv) PS C:\Users\User\Documents\OFFICE\ai_aso_platform> git remote set-url origin git@github-work:memoonabitlogics/AI-SUPPORT-PLATFORM.git
+(venv) PS C:\Users\User\Documents\OFFICE\ai_aso_platform> git remote -v                                                   
+origin  git@github-work:memoonabitlogics/AI-SUPPORT-PLATFORM.git (fetch)
+origin  git@github-work:memoonabitlogics/AI-SUPPORT-PLATFORM.git (push)
+(venv) PS C:\Users\User\Documents\OFFICE\ai_aso_platform> git push                                                        
+Enumerating objects: 39, done.
+Counting objects: 100% (39/39), done.
+Delta compression using up to 12 threads
+Compressing objects: 100% (38/38), done.
+Writing objects: 100% (39/39), 27.51 KiB | 782.00 KiB/s, done.
+Total 39 (delta 0), reused 0 (delta 0), pack-reused 0 (from 0)
+To github-work:memoonabitlogics/AI-SUPPORT-PLATFORM.git
+ * [new branch]      main -> main
