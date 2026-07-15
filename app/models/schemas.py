@@ -100,6 +100,16 @@ class ReviewOut(ORMBase):
     posted_at: Optional[datetime] = None
 
 
+class ReviewIntelligenceRequest(BaseModel):
+    competitor_ids: Optional[list[int]] = Field(
+        default=None,
+        description="If omitted, analyzes tracked competitors up to tracked_competitor_limit.",
+    )
+    platform: Optional[Platform] = Field(default=None, description="Optional platform filter.")
+    reviews_per_competitor: int = Field(default=50, ge=0, le=200)
+    tracked_competitor_limit: int = Field(default=100, ge=1, le=500)
+
+
 # ---------- Market Opportunities ----------
 
 class MarketOpportunityOut(ORMBase):
