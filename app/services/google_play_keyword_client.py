@@ -15,8 +15,6 @@ volume or difficulty data is available for free from Google either:
 
 from __future__ import annotations
 
-from gplay_scraper import GPlayScraper
-
 from app.core.config import settings
 from app.core.logging import logger
 
@@ -31,7 +29,16 @@ class GooglePlayKeywordClient:
     def __init__(self, country: str | None = None, lang: str = "en"):
         self.country = country or settings.google_play_country
         self.lang = lang
-        self._scraper = GPlayScraper()
+        self._scraper = self._build_scraper()
+
+    def _build_scraper(self):
+        try:
+            from gplay_scraper import GPlayScraper
+        except ModuleNotFoundError as exc:
+            raise KeywordSourceUnavailableError(
+                "gplay-scraper is not installed; install project requirements to use Google Play keyword research."
+            ) from exc
+        return GPlayScraper()
 
     def fetch_suggestions(self, term: str, limit: int = 10) -> list[str]:
         try:

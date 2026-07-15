@@ -74,6 +74,16 @@ class CompetitorOut(ORMBase):
     last_analyzed_at: datetime
 
 
+class CompetitorAnalysisTarget(BaseModel):
+    platform: Platform
+    store_app_id: str = Field(..., min_length=1, description="App Store track ID or Google Play package name.")
+
+
+class CompetitorAnalysisRequest(BaseModel):
+    targets: list[CompetitorAnalysisTarget] = Field(..., min_length=1)
+    reviews_per_app: int = Field(default=20, ge=0, le=100)
+
+
 # ---------- Reviews ----------
 
 class ReviewOut(ORMBase):
