@@ -11,7 +11,7 @@ class FakeOpportunityClient:
     def __init__(self, opportunities=None):
         self.opportunities = opportunities or []
 
-    def fetch_opportunities(self, db, opportunity_ids=None, min_opportunity_score=None, limit=50):
+    def fetch_opportunities(self, db, opportunity_ids=None, min_opportunity_score=None, limit=50, **kwargs):
         if opportunity_ids:
             return [row for row in self.opportunities if row.id in opportunity_ids]
         return self.opportunities[:limit]

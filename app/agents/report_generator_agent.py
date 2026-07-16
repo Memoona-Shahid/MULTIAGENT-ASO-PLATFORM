@@ -100,6 +100,7 @@ class ReportGeneratorAgent:
             summary,
             lambda: self.client.fetch_keywords(db, period_start, period_end, limit=per_source_limit),
         )
+        keywords = self._diversify_keywords(keywords)
         competitors = self._safe_fetch(
             "competitors",
             summary,
@@ -115,6 +116,7 @@ class ReportGeneratorAgent:
             summary,
             lambda: self.client.fetch_opportunities(db, period_start, period_end, limit=per_source_limit),
         )
+        opportunities = self._dedupe_by_category(opportunities)
         product_ideas = self._resolve_report_ideas(
             db,
             generate_ideas=generate_ideas,
@@ -215,6 +217,33 @@ class ReportGeneratorAgent:
             seen.add(key)
             unique.append(idea)
         return unique
+
+    def _dedupe_by_category(self, rows: list) -> list:
+        from app.utils.category_normalize import normalize_category
+
+        seen: set[str] = set()
+        unique = []
+        for row in rows:
+            category = normalize_category(getattr(row, "category", None)) or f"id:{getattr(row, 'id', id(row))}"
+            if category in seen:
+                continue
+            seen.add(category)
+            unique.append(row)
+        return unique
+
+    def _diversify_keywords(self, rows: list, limit: int = 20) -> list:
+        seen: set[str] = set()
+        unique = []
+        for row in rows:
+            term = (getattr(row, "term", "") or "").strip().lower()
+            root = term.split()[0] if term else ""
+            if not root or root in seen:
+                continue
+            seen.add(root)
+            unique.append(row)
+            if len(unique) >= limit:
+                break
+        return unique or rows[:limit]
 
     def _default_period_start(self, report_type: ReportType, period_end: datetime) -> datetime:
         days = 7 if report_type == ReportType.WEEKLY else 1

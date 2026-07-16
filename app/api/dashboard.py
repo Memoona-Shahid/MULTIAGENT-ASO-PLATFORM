@@ -255,7 +255,8 @@ DASHBOARD_HTML = r"""
     <div class="top">
       <div>
         <h1>ASO Intelligence</h1>
-        <p>Clear daily view of product ideas, market opportunities, and reports.</p>
+        <p>Clear daily view of product ideas, market opportunities, and reports.
+           Generate pulls keywords and competitors from your trending apps first.</p>
       </div>
       <div class="actions">
         <button id="runBtn" onclick="runDaily()">Generate today’s report</button>
@@ -542,6 +543,10 @@ DASHBOARD_HTML = r"""
           <div class="banner">
             Done. Created <strong>${num(data.total_ideas_generated)}</strong> ideas
             and saved report <strong>#${num(data.report_id)}</strong>.
+            ${Array.isArray(data.keyword_seeds) && data.keyword_seeds.length
+              ? `<div class="quiet" style="margin-top:6px">Keyword seeds from trends: ${esc(data.keyword_seeds.slice(0,8).join(", "))}</div>`
+              : ""}
+            ${data.competitor_targets ? `<div class="quiet">Competitors analyzed from trends: ${num(data.competitor_targets)}</div>` : ""}
           </div>
         `;
         await loadData();
