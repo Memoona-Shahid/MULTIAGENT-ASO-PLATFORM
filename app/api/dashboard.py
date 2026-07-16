@@ -346,6 +346,42 @@ DASHBOARD_HTML = """
         <button class="secondary" onclick="listNegativeReviews()">Negative Reviews</button>
       </section>
 
+      <section>
+        <h2>Module 7: Market Opportunities</h2>
+        <div class="grid">
+          <div>
+            <label for="oppMinScore">Min score (synthesize)</label>
+            <input id="oppMinScore" type="number" value="45" min="0" max="100">
+          </div>
+          <div>
+            <label for="oppMinKeywordOpp">Min keyword opportunity</label>
+            <input id="oppMinKeywordOpp" type="number" value="55" min="0" max="100">
+          </div>
+        </div>
+        <label for="oppPerSourceLimit">Per-source limit</label>
+        <input id="oppPerSourceLimit" type="number" value="300" min="10" max="2000">
+        <button onclick="runOpportunitySynthesis()">Synthesize Opportunities</button>
+
+        <h3 style="margin-top:18px; font-size:16px;">View Saved Opportunities</h3>
+        <div class="grid">
+          <div>
+            <label for="oppListCategory">Category (optional)</label>
+            <input id="oppListCategory" placeholder="e.g. Finance">
+          </div>
+          <div>
+            <label for="oppListLimit">Limit</label>
+            <input id="oppListLimit" type="number" value="50" min="1" max="500">
+          </div>
+        </div>
+        <div class="grid">
+          <div>
+            <label for="oppListMinScore">Min opportunity score (list)</label>
+            <input id="oppListMinScore" type="number" value="0" min="0" max="100">
+          </div>
+        </div>
+        <button class="secondary" onclick="listOpportunities()">List Opportunities</button>
+      </section>
+
     </div>
 
     <aside>
@@ -635,12 +671,55 @@ DASHBOARD_HTML = """
       `;
     }
 
+    function renderOpportunitySynthesisSummary(data) {
+      const skippedCount = Object.keys(data.skipped || {}).length;
+      const signals = data.signals || {};
+      return `
+        <h2>Opportunity Synthesis</h2>
+        <div class="summary-grid">
+          ${metric("Opportunities saved", data.opportunities)}
+          ${metric("Skipped sources", skippedCount)}
+        </div>
+        ${renderSimpleCounts("Signal sources", signals)}
+        ${skippedBlock(data.skipped)}
+      `;
+    }
+
+    function renderOpportunities(items) {
+      if (!items.length) return emptyState("No opportunities saved yet. Click 'Synthesize Opportunities' first.");
+      return `
+        <h2>Market Opportunities</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Opportunity</th>
+              <th>Category</th>
+              <th>Score</th>
+              <th>What we found</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.map(item => `
+              <tr>
+                <td><strong>${escapeHtml(item.title)}</strong><br><span class="meta">ID ${formatNumber(item.id)}</span></td>
+                <td>${escapeHtml(item.category || "Not available")}</td>
+                <td><span class="badge good">${formatNumber(item.opportunity_score)}</span><br><span class="meta">${formatDate(item.identified_at)}</span></td>
+                <td>${escapeHtml(item.description || "")}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+    }
+
     function renderReadable(path, data) {
       if (path.startsWith("/health")) return renderHealth(data || {});
+      if (path.includes("/api/opportunities/synthesize")) return renderOpportunitySynthesisSummary(data || {});
       if (path.includes("/research") || path.includes("/analyze")) return renderRunSummary(data || {}, "Run Complete");
       if (Array.isArray(data)) {
         if (path.includes("/trending")) return renderTrendingApps(data);
         if (path.includes("/keywords")) return renderKeywords(data);
+        if (path.includes("/opportunities")) return renderOpportunities(data);
         if (path.includes("/competitors") && path.includes("/reviews")) return renderReviews(data);
         if (path.includes("/competitors")) return renderCompetitors(data);
         if (path.includes("/reviews")) return renderReviews(data);
@@ -758,6 +837,23 @@ DASHBOARD_HTML = """
 
     function listNegativeReviews() {
       requestJson("/api/reviews?sentiment=negative");
+    }
+
+    function runOpportunitySynthesis() {
+      const body = {
+        min_score: numberValue("oppMinScore"),
+        min_keyword_opportunity: numberValue("oppMinKeywordOpp"),
+        per_source_limit: numberValue("oppPerSourceLimit"),
+      };
+      requestJson("/api/opportunities/synthesize", { method: "POST", body: JSON.stringify(body) });
+    }
+
+    function listOpportunities() {
+      requestJson(`/api/opportunities${query({
+        category: value("oppListCategory"),
+        min_opportunity_score: numberValue("oppListMinScore"),
+        limit: numberValue("oppListLimit"),
+      })}`);
     }
 
   </script>

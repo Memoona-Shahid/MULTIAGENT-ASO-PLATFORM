@@ -11,3 +11,4 @@ def test_root_page_loads_dashboard(client):
 
     assert response.status_code == 200
     assert "Module 6: Reviews Intelligence" in response.text
+    assert "Module 7: Market Opportunities" in response.text

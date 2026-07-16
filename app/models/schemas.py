@@ -121,6 +121,12 @@ class MarketOpportunityOut(ORMBase):
     identified_at: datetime
 
 
+class MarketOpportunitySynthesisRequest(BaseModel):
+    min_score: float = Field(default=45.0, ge=0, le=100)
+    min_keyword_opportunity: float = Field(default=55.0, ge=0, le=100)
+    per_source_limit: int = Field(default=300, ge=10, le=2000)
+
+
 # ---------- Product Ideas ----------
 
 class ProductIdeaOut(ORMBase):
