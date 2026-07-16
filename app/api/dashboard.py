@@ -1,4 +1,4 @@
-"""ASO intelligence dashboard — trends, opportunities, ideas, and reports."""
+"""ASO intelligence dashboard — clear, focused presentation."""
 
 from __future__ import annotations
 
@@ -13,496 +13,549 @@ DASHBOARD_HTML = r"""
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>ASO Intelligence — AI ASO Platform</title>
+  <title>ASO Intelligence</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #f3f6f4;
-      --surface: #ffffff;
-      --ink: #14201b;
-      --muted: #5b6b63;
-      --line: #d7e0db;
+      --bg: #f7f5f1;
+      --paper: #fffdf9;
+      --ink: #1c1917;
+      --muted: #78716c;
+      --line: #e7e5e4;
       --accent: #0f766e;
-      --accent-soft: #d8f3ef;
-      --warn: #b45309;
+      --accent-bg: #ecfdf8;
+      --warn-bg: #fff7ed;
+      --warn: #c2410c;
+      --good: #166534;
       --danger: #b91c1c;
-      --good: #15803d;
-      --shadow: 0 10px 30px rgba(20, 32, 27, 0.06);
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      font-family: "Source Sans 3", system-ui, sans-serif;
       color: var(--ink);
-      background:
-        radial-gradient(circle at 0% 0%, #dff5ef 0, transparent 28%),
-        radial-gradient(circle at 100% 0%, #e8efe9 0, transparent 24%),
-        var(--bg);
-      min-height: 100vh;
+      background: var(--bg);
+      line-height: 1.5;
     }
-    h1, h2, h3, .brand {
-      font-family: Sora, "IBM Plex Sans", sans-serif;
+    h1, h2, h3 {
+      font-family: Fraunces, Georgia, serif;
+      font-weight: 700;
       letter-spacing: -0.02em;
+      line-height: 1.2;
+      margin: 0;
     }
-    a { color: var(--accent); }
-    .shell { max-width: 1200px; margin: 0 auto; padding: 24px 20px 48px; }
-    header {
+    .wrap {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 28px 20px 64px;
+    }
+    .top {
       display: flex;
       justify-content: space-between;
-      gap: 20px;
-      align-items: flex-start;
-      margin-bottom: 24px;
+      gap: 16px;
+      align-items: flex-end;
+      margin-bottom: 28px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--line);
     }
-    .brand { font-size: 28px; margin: 0 0 6px; }
-    .subtitle { margin: 0; color: var(--muted); max-width: 52ch; line-height: 1.5; }
-    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
-    button, .btn {
+    .top p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      max-width: 42ch;
+    }
+    .actions { display: flex; gap: 8px; flex-shrink: 0; }
+    button {
       border: 0;
-      border-radius: 10px;
-      padding: 11px 16px;
-      font: 600 14px "IBM Plex Sans", sans-serif;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font: 600 14px "Source Sans 3", sans-serif;
       cursor: pointer;
       background: var(--accent);
       color: #fff;
     }
-    button.secondary, .btn.secondary {
-      background: var(--surface);
+    button.ghost {
+      background: transparent;
       color: var(--ink);
       border: 1px solid var(--line);
     }
-    button:disabled { opacity: 0.6; cursor: wait; }
+    button:disabled { opacity: 0.55; cursor: wait; }
     .status {
+      min-height: 1.4em;
       margin: 0 0 18px;
+      font-size: 14px;
       color: var(--muted);
-      font-size: 13px;
-      min-height: 1.2em;
     }
-    .status.error { color: var(--danger); }
     .status.ok { color: var(--good); }
-    .metrics {
+    .status.err { color: var(--danger); }
+    .stats {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 12px;
-      margin-bottom: 18px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 22px;
     }
-    .metric {
-      background: var(--surface);
+    .stat {
+      background: var(--paper);
       border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 14px 16px;
-      box-shadow: var(--shadow);
+      border-radius: 12px;
+      padding: 14px;
     }
-    .metric span { display: block; color: var(--muted); font-size: 12px; margin-bottom: 6px; }
-    .metric strong { font-family: Sora, sans-serif; font-size: 26px; }
-    .tabs {
+    .stat label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .stat b {
+      font-family: Fraunces, Georgia, serif;
+      font-size: 24px;
+    }
+    nav.views {
       display: flex;
-      gap: 8px;
+      gap: 6px;
+      margin-bottom: 18px;
       flex-wrap: wrap;
-      margin-bottom: 16px;
     }
-    .tab {
+    nav.views button {
       background: transparent;
       color: var(--muted);
       border: 1px solid transparent;
       padding: 8px 12px;
     }
-    .tab.active {
-      background: var(--accent-soft);
-      color: var(--accent);
-      border-color: #b7e4dc;
+    nav.views button.on {
+      background: var(--paper);
+      color: var(--ink);
+      border-color: var(--line);
     }
-    .panel {
-      display: none;
-      background: var(--surface);
+    .view { display: none; }
+    .view.on { display: block; }
+    .section-title {
+      font-size: 22px;
+      margin-bottom: 6px;
+    }
+    .section-help {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 15px;
+    }
+    .list { display: grid; gap: 12px; }
+    .item {
+      background: var(--paper);
       border: 1px solid var(--line);
-      border-radius: 16px;
-      padding: 18px;
-      box-shadow: var(--shadow);
+      border-radius: 14px;
+      padding: 16px 18px;
     }
-    .panel.active { display: block; }
-    .panel h2 { margin: 0 0 6px; font-size: 20px; }
-    .panel .lead { margin: 0 0 16px; color: var(--muted); }
-    .grid-2 {
-      display: grid;
-      grid-template-columns: 1.1fr 0.9fr;
-      gap: 16px;
+    .item h3 {
+      font-size: 18px;
+      margin-bottom: 8px;
     }
-    .card-list { display: grid; gap: 12px; }
-    .card {
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 14px;
-      background: #fbfcfb;
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 10px;
     }
-    .card h3 { margin: 0 0 8px; font-size: 16px; }
-    .meta { color: var(--muted); font-size: 12px; margin: 0; }
-    .badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      border-radius: 999px;
-      padding: 3px 9px;
+    .tag {
       font-size: 12px;
-      background: var(--accent-soft);
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--accent-bg);
       color: var(--accent);
     }
-    .badge.neutral { background: #eef2f0; color: var(--muted); }
-    .badge.warn { background: #fff7ed; color: var(--warn); }
-    table { width: 100%; border-collapse: collapse; }
-    th, td {
-      text-align: left;
-      padding: 10px 8px;
-      border-bottom: 1px solid var(--line);
-      vertical-align: top;
-      font-size: 14px;
+    .tag.soft {
+      background: #f5f5f4;
+      color: var(--muted);
     }
-    th { color: var(--muted); font-size: 12px; font-weight: 600; }
+    .tag.warm {
+      background: var(--warn-bg);
+      color: var(--warn);
+    }
+    .item p {
+      margin: 0 0 8px;
+      font-size: 15px;
+    }
+    .item p:last-child { margin-bottom: 0; }
+    .label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+    .field { margin-bottom: 10px; }
+    .field:last-child { margin-bottom: 0; }
+    .quiet { color: var(--muted); font-size: 14px; }
     .empty {
       border: 1px dashed var(--line);
       border-radius: 12px;
-      padding: 24px;
+      padding: 28px;
       text-align: center;
       color: var(--muted);
+      background: var(--paper);
     }
-    .report-box {
-      white-space: pre-wrap;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      font-size: 12.5px;
-      line-height: 1.5;
-      background: #0f1c18;
-      color: #d7efe7;
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--paper);
+      border: 1px solid var(--line);
       border-radius: 12px;
-      padding: 16px;
-      max-height: 520px;
-      overflow: auto;
+      overflow: hidden;
     }
-    .run-summary {
-      background: var(--accent-soft);
-      border: 1px solid #b7e4dc;
+    th, td {
+      text-align: left;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      font-size: 14px;
+      vertical-align: top;
+    }
+    th {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+      background: #fafaf9;
+    }
+    tr:last-child td { border-bottom: 0; }
+    .report-body {
+      margin-top: 14px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px;
+    }
+    .report-body h3 {
+      font-size: 16px;
+      margin: 16px 0 8px;
+    }
+    .report-body h3:first-child { margin-top: 0; }
+    .report-body p, .report-body li {
+      font-size: 14px;
+      color: var(--ink);
+    }
+    .report-body ul { padding-left: 18px; margin: 0 0 10px; }
+    .banner {
+      background: var(--accent-bg);
+      border: 1px solid #99f6e4;
       border-radius: 12px;
-      padding: 14px;
+      padding: 12px 14px;
       margin-bottom: 16px;
+      font-size: 14px;
     }
-    @media (max-width: 900px) {
-      header { flex-direction: column; }
-      .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .grid-2 { grid-template-columns: 1fr; }
+    @media (max-width: 720px) {
+      .top { flex-direction: column; align-items: stretch; }
+      .stats { grid-template-columns: repeat(2, 1fr); }
     }
   </style>
 </head>
 <body>
-  <div class="shell">
-    <header>
+  <div class="wrap">
+    <div class="top">
       <div>
-        <h1 class="brand">ASO Intelligence</h1>
-        <p class="subtitle">
-          Your AI ASO employee — trending apps, market opportunities, product ideas,
-          and daily intelligence reports in one place.
-        </p>
+        <h1>ASO Intelligence</h1>
+        <p>Clear daily view of product ideas, market opportunities, and reports.</p>
       </div>
       <div class="actions">
-        <button id="runDailyBtn" onclick="runDailyPipeline()">Generate Daily Ideas Report</button>
-        <button class="secondary" onclick="refreshDashboard()">Refresh</button>
+        <button id="runBtn" onclick="runDaily()">Generate today’s report</button>
+        <button class="ghost" onclick="loadData()">Refresh</button>
       </div>
-    </header>
-
-    <p id="status" class="status">Loading intelligence…</p>
-    <div id="runBanner"></div>
-
-    <div class="metrics" id="metrics"></div>
-
-    <div class="tabs">
-      <button class="tab active" data-tab="overview" onclick="showTab('overview')">Overview</button>
-      <button class="tab" data-tab="trends" onclick="showTab('trends')">Trends</button>
-      <button class="tab" data-tab="opportunities" onclick="showTab('opportunities')">Opportunities</button>
-      <button class="tab" data-tab="ideas" onclick="showTab('ideas')">Product Ideas</button>
-      <button class="tab" data-tab="reports" onclick="showTab('reports')">Reports</button>
     </div>
 
-    <section class="panel active" id="panel-overview">
-      <h2>Today’s intelligence</h2>
-      <p class="lead">Highest-signal opportunities and product ideas ready for review.</p>
-      <div class="grid-2">
-        <div>
-          <h3>Top product ideas</h3>
-          <div class="card-list" id="overviewIdeas"></div>
-        </div>
-        <div>
-          <h3>Latest report</h3>
-          <div id="overviewReport"></div>
-        </div>
-      </div>
+    <p id="status" class="status">Loading…</p>
+    <div id="banner"></div>
+
+    <div class="stats" id="stats"></div>
+
+    <nav class="views">
+      <button class="on" data-view="ideas" onclick="showView('ideas')">Ideas</button>
+      <button data-view="opportunities" onclick="showView('opportunities')">Opportunities</button>
+      <button data-view="trends" onclick="showView('trends')">Trends</button>
+      <button data-view="reports" onclick="showView('reports')">Reports</button>
+    </nav>
+
+    <section class="view on" id="view-ideas">
+      <h2 class="section-title">Product ideas</h2>
+      <p class="section-help">What to build next — one clear idea per market gap.</p>
+      <div class="list" id="ideas"></div>
     </section>
 
-    <section class="panel" id="panel-trends">
-      <h2>Trending apps</h2>
-      <p class="lead">Recent Apple App Store and Google Play chart signals.</p>
-      <div id="trendsTable"></div>
-      <h3 style="margin-top:20px">Top keyword opportunities</h3>
-      <div id="keywordsTable"></div>
+    <section class="view" id="view-opportunities">
+      <h2 class="section-title">Market opportunities</h2>
+      <p class="section-help">Where demand and gaps look strongest right now.</p>
+      <div class="list" id="opportunities"></div>
     </section>
 
-    <section class="panel" id="panel-opportunities">
-      <h2>Market opportunities</h2>
-      <p class="lead">Category gaps synthesized from trends, keywords, competitors, and reviews.</p>
-      <div class="card-list" id="opportunitiesList"></div>
+    <section class="view" id="view-trends">
+      <h2 class="section-title">Trending apps</h2>
+      <p class="section-help">Recent chart movers from App Store and Google Play.</p>
+      <div id="trends"></div>
+      <h2 class="section-title" style="margin-top:28px">Keywords</h2>
+      <p class="section-help">High-opportunity search terms.</p>
+      <div id="keywords"></div>
     </section>
 
-    <section class="panel" id="panel-ideas">
-      <h2>Product ideas</h2>
-      <p class="lead">AI-generated mobile app, SaaS, and AI product concepts.</p>
-      <div class="card-list" id="ideasList"></div>
-    </section>
-
-    <section class="panel" id="panel-reports">
-      <h2>Daily & weekly reports</h2>
-      <p class="lead">Saved intelligence reports with actionable recommendations.</p>
-      <div class="card-list" id="reportsList"></div>
-      <div id="reportDetail" style="margin-top:16px"></div>
+    <section class="view" id="view-reports">
+      <h2 class="section-title">Reports</h2>
+      <p class="section-help">Saved daily and weekly intelligence reports.</p>
+      <div class="list" id="reports"></div>
+      <div id="reportDetail"></div>
     </section>
   </div>
 
   <script>
-    let state = null;
-
-    function setStatus(text, kind = "") {
-      const el = document.getElementById("status");
-      el.textContent = text;
-      el.className = "status" + (kind ? " " + kind : "");
-    }
-
-    function showTab(name) {
-      document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.tab === name));
-      document.querySelectorAll(".panel").forEach((p) => p.classList.toggle("active", p.id === "panel-" + name));
-    }
-
-    function escapeHtml(value) {
-      return String(value ?? "")
+    function $(id) { return document.getElementById(id); }
+    function esc(v) {
+      return String(v ?? "")
         .replaceAll("&", "&amp;")
         .replaceAll("<", "&lt;")
         .replaceAll(">", "&gt;")
         .replaceAll('"', "&quot;");
     }
-
-    function titleCase(value) {
-      return String(value || "").replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    function nice(v) {
+      return String(v || "").replaceAll("_", " ").replace(/\b\w/g, c => c.toUpperCase());
     }
-
-    function formatNumber(value) {
-      if (value === null || value === undefined || Number.isNaN(Number(value))) return "—";
-      return Number(value).toLocaleString(undefined, { maximumFractionDigits: 1 });
+    function num(v) {
+      if (v === null || v === undefined || Number.isNaN(Number(v))) return "—";
+      return Number(v).toLocaleString(undefined, { maximumFractionDigits: 1 });
     }
-
-    function formatDate(value) {
-      if (!value) return "—";
-      const d = new Date(value);
-      return Number.isNaN(d.getTime()) ? String(value) : d.toLocaleString();
+    function when(v) {
+      if (!v) return "—";
+      const d = new Date(v);
+      return Number.isNaN(d.getTime()) ? String(v) : d.toLocaleString();
     }
-
+    function setStatus(text, kind="") {
+      const el = $("status");
+      el.textContent = text;
+      el.className = "status" + (kind ? " " + kind : "");
+    }
+    function showView(name) {
+      document.querySelectorAll("nav.views button").forEach(b => b.classList.toggle("on", b.dataset.view === name));
+      document.querySelectorAll(".view").forEach(v => v.classList.toggle("on", v.id === "view-" + name));
+    }
     function empty(msg) {
-      return `<div class="empty">${escapeHtml(msg)}</div>`;
+      return `<div class="empty">${esc(msg)}</div>`;
+    }
+    function shortProblem(text) {
+      if (!text) return "Market gap identified from store signals.";
+      // Drop noisy score dumps like "(30 trend signals, 0 fast-growing)..."
+      return String(text)
+        .replace(/\([^)]*trend signals[^)]*\)/gi, "")
+        .replace(/\s+/g, " ")
+        .trim();
     }
 
-    function renderMetrics(counts) {
+    function renderStats(counts) {
       const items = [
-        ["Trending apps", counts.trends],
+        ["Ideas", counts.ideas],
         ["Opportunities", counts.opportunities],
-        ["Product ideas", counts.ideas],
+        ["Trending apps", counts.trends],
         ["Reports", counts.reports],
-        ["Keywords", counts.keywords],
-        ["Competitors", counts.competitors],
-        ["Reviews", counts.reviews],
-        ["Memory", counts.memory],
       ];
-      document.getElementById("metrics").innerHTML = items.map(([label, value]) => `
-        <div class="metric"><span>${escapeHtml(label)}</span><strong>${formatNumber(value)}</strong></div>
+      $("stats").innerHTML = items.map(([label, value]) => `
+        <div class="stat"><label>${esc(label)}</label><b>${num(value)}</b></div>
       `).join("");
     }
 
-    function renderIdeaCards(items, limit = 6) {
-      if (!items || !items.length) return empty("No product ideas yet. Click Generate Daily Ideas Report.");
-      return items.slice(0, limit).map((item) => `
-        <div class="card">
-          <h3>${escapeHtml(item.title)}</h3>
-          <div class="badges">
-            <span class="badge">${escapeHtml(titleCase(item.idea_type))}</span>
-            <span class="badge neutral">Confidence ${formatNumber(item.confidence_score)}</span>
-          </div>
-          <p><strong>Problem:</strong> ${escapeHtml(item.problem_statement || "Not available")}</p>
-          <p><strong>Solution:</strong> ${escapeHtml(item.proposed_solution || "Not available")}</p>
-          <p class="meta">Audience: ${escapeHtml(item.target_audience || "—")} · Monetization: ${escapeHtml(item.monetization_strategy || "—")}</p>
-        </div>
-      `).join("");
-    }
-
-    function renderOverview(data) {
-      document.getElementById("overviewIdeas").innerHTML = renderIdeaCards(data.ideas, 4);
-      const report = data.latest_report;
-      if (!report) {
-        document.getElementById("overviewReport").innerHTML = empty("No report yet. Generate a daily ideas report to create one.");
+    function renderIdeas(items) {
+      if (!items?.length) {
+        $("ideas").innerHTML = empty("No ideas yet. Click “Generate today’s report”.");
         return;
       }
-      document.getElementById("overviewReport").innerHTML = `
-        <div class="card">
-          <h3>${escapeHtml(report.title)}</h3>
-          <div class="badges">
-            <span class="badge">${escapeHtml(titleCase(report.report_type))}</span>
-            <span class="badge neutral">${escapeHtml(titleCase(report.report_format))}</span>
+      $("ideas").innerHTML = items.map(item => `
+        <article class="item">
+          <h3>${esc(item.title)}</h3>
+          <div class="tags">
+            <span class="tag">${esc(nice(item.idea_type))}</span>
+            <span class="tag soft">Confidence ${num(item.confidence_score)}</span>
           </div>
-          <p>${escapeHtml(report.summary || "")}</p>
-          <p class="meta">${formatDate(report.generated_at)}${report.file_path ? " · " + escapeHtml(report.file_path) : ""}</p>
-        </div>
-        ${data.latest_report_preview ? `<div class="report-box">${escapeHtml(data.latest_report_preview)}</div>` : ""}
-      `;
+          <div class="field">
+            <span class="label">Why this</span>
+            <p>${esc(shortProblem(item.problem_statement))}</p>
+          </div>
+          <div class="field">
+            <span class="label">What to build</span>
+            <p>${esc(item.proposed_solution || "—")}</p>
+          </div>
+          <div class="field">
+            <span class="label">Who it’s for</span>
+            <p class="quiet">${esc(item.target_audience || "—")}</p>
+          </div>
+          <div class="field">
+            <span class="label">How it makes money</span>
+            <p class="quiet">${esc(item.monetization_strategy || "—")}</p>
+          </div>
+        </article>
+      `).join("");
+    }
+
+    function renderOpportunities(items) {
+      if (!items?.length) {
+        $("opportunities").innerHTML = empty("No opportunities yet.");
+        return;
+      }
+      $("opportunities").innerHTML = items.map(item => `
+        <article class="item">
+          <h3>${esc(item.title)}</h3>
+          <div class="tags">
+            <span class="tag">${esc(item.category || "General")}</span>
+            <span class="tag warm">Score ${num(item.opportunity_score)}</span>
+          </div>
+          <p>${esc(shortProblem(item.description))}</p>
+        </article>
+      `).join("");
     }
 
     function renderTrends(data) {
       const trends = data.trends || [];
-      document.getElementById("trendsTable").innerHTML = trends.length ? `
+      $("trends").innerHTML = trends.length ? `
         <table>
-          <thead><tr><th>App</th><th>Platform</th><th>Chart</th><th>Rank</th><th>Rating</th></tr></thead>
+          <thead><tr><th>App</th><th>Store</th><th>Chart</th><th>Rank</th></tr></thead>
           <tbody>
-            ${trends.map((row) => `
+            ${trends.map(row => `
               <tr>
-                <td><strong>${escapeHtml(row.name)}</strong><br><span class="meta">${escapeHtml(row.category || "—")}</span></td>
-                <td>${escapeHtml(titleCase(row.platform))}</td>
-                <td>${escapeHtml(titleCase(row.chart_type))}</td>
-                <td>${formatNumber(row.rank)}</td>
-                <td>${formatNumber(row.rating)}</td>
+                <td>
+                  <strong>${esc(row.name)}</strong>
+                  <div class="quiet">${esc(row.category || "—")}</div>
+                </td>
+                <td>${esc(nice(row.platform))}</td>
+                <td>${esc(nice(row.chart_type))}</td>
+                <td>${num(row.rank)}</td>
               </tr>
             `).join("")}
           </tbody>
         </table>
-      ` : empty("No trending apps saved yet. Run App Store / Google Play research first.");
+      ` : empty("No trending apps yet.");
 
       const keywords = data.keywords || [];
-      document.getElementById("keywordsTable").innerHTML = keywords.length ? `
+      $("keywords").innerHTML = keywords.length ? `
         <table>
-          <thead><tr><th>Keyword</th><th>Platform</th><th>Opportunity</th><th>Volume</th><th>Difficulty</th></tr></thead>
+          <thead><tr><th>Keyword</th><th>Store</th><th>Opportunity</th></tr></thead>
           <tbody>
-            ${keywords.map((row) => `
+            ${keywords.map(row => `
               <tr>
-                <td><strong>${escapeHtml(row.term)}</strong></td>
-                <td>${escapeHtml(titleCase(row.platform))}</td>
-                <td>${formatNumber(row.opportunity_score)}</td>
-                <td>${formatNumber(row.search_volume)}</td>
-                <td>${formatNumber(row.difficulty_score)}</td>
+                <td><strong>${esc(row.term)}</strong></td>
+                <td>${esc(nice(row.platform))}</td>
+                <td>${num(row.opportunity_score)}</td>
               </tr>
             `).join("")}
           </tbody>
         </table>
-      ` : empty("No keywords saved yet.");
+      ` : empty("No keywords yet.");
     }
 
-    function renderOpportunities(data) {
-      const items = data.opportunities || [];
-      document.getElementById("opportunitiesList").innerHTML = items.length ? items.map((item) => `
-        <div class="card">
-          <h3>${escapeHtml(item.title)}</h3>
-          <div class="badges">
-            <span class="badge">${escapeHtml(item.category || "General")}</span>
-            <span class="badge warn">Score ${formatNumber(item.opportunity_score)}</span>
+    function markdownToHtml(md) {
+      if (!md) return "<p class='quiet'>No report content.</p>";
+      const lines = String(md).split(/\r?\n/);
+      let html = "";
+      let inList = false;
+      const closeList = () => { if (inList) { html += "</ul>"; inList = false; } };
+      for (const raw of lines) {
+        const line = raw.trimEnd();
+        if (!line.trim()) { closeList(); continue; }
+        if (line.startsWith("### ")) { closeList(); html += `<h3>${esc(line.slice(4))}</h3>`; continue; }
+        if (line.startsWith("## ")) { closeList(); html += `<h3>${esc(line.slice(3))}</h3>`; continue; }
+        if (line.startsWith("# ")) { closeList(); html += `<h3>${esc(line.slice(2))}</h3>`; continue; }
+        if (line.startsWith("- ")) {
+          if (!inList) { html += "<ul>"; inList = true; }
+          html += `<li>${esc(line.slice(2).replace(/\*\*(.*?)\*\*/g, "$1"))}</li>`;
+          continue;
+        }
+        closeList();
+        html += `<p>${esc(line.replace(/\*\*(.*?)\*\*/g, "$1"))}</p>`;
+      }
+      closeList();
+      return html;
+    }
+
+    function renderReports(items) {
+      if (!items?.length) {
+        $("reports").innerHTML = empty("No reports yet.");
+        return;
+      }
+      $("reports").innerHTML = items.map(item => `
+        <article class="item">
+          <h3>${esc(item.title)}</h3>
+          <div class="tags">
+            <span class="tag">${esc(nice(item.report_type))}</span>
+            <span class="tag soft">${esc(nice(item.report_format))}</span>
           </div>
-          <p>${escapeHtml(item.description || "")}</p>
-          <p class="meta">ID ${formatNumber(item.id)} · ${formatDate(item.identified_at)}</p>
-        </div>
-      `).join("") : empty("No opportunities yet. Generate a daily report to synthesize them.");
-    }
-
-    function renderIdeas(data) {
-      document.getElementById("ideasList").innerHTML = renderIdeaCards(data.ideas, 20);
-    }
-
-    function renderReports(data) {
-      const items = data.reports || [];
-      document.getElementById("reportsList").innerHTML = items.length ? items.map((item) => `
-        <div class="card">
-          <h3>${escapeHtml(item.title)}</h3>
-          <div class="badges">
-            <span class="badge">${escapeHtml(titleCase(item.report_type))}</span>
-            <span class="badge neutral">${escapeHtml(titleCase(item.report_format))}</span>
-          </div>
-          <p>${escapeHtml(item.summary || "")}</p>
-          <p class="meta">${formatDate(item.generated_at)}${item.file_path ? " · " + escapeHtml(item.file_path) : ""}</p>
-          <button class="secondary" onclick="openReport(${item.id})">Open report</button>
-        </div>
-      `).join("") : empty("No reports yet.");
+          <p class="quiet">${esc((item.summary || "").split(".")[0] + ".")}</p>
+          <p class="quiet">${when(item.generated_at)}</p>
+          <button class="ghost" onclick="openReport(${item.id})">Read report</button>
+        </article>
+      `).join("");
     }
 
     async function openReport(id) {
-      setStatus("Loading report…");
+      setStatus("Opening report…");
       try {
         const res = await fetch(`/api/dashboard/reports/${id}`);
         const data = await res.json();
-        if (!res.ok || data.error) throw new Error(data.error || "Failed to load report");
-        document.getElementById("reportDetail").innerHTML = `
-          <h3>${escapeHtml(data.report.title)}</h3>
-          <div class="report-box">${escapeHtml(data.content || data.report.summary || "No file content available.")}</div>
+        if (!res.ok || data.error) throw new Error(data.error || "Could not open report");
+        $("reportDetail").innerHTML = `
+          <div class="report-body">
+            <h3>${esc(data.report.title)}</h3>
+            ${markdownToHtml(data.content || data.report.summary || "")}
+          </div>
         `;
-        showTab("reports");
-        setStatus("Report loaded.", "ok");
+        showView("reports");
+        setStatus("Report ready.", "ok");
       } catch (err) {
-        setStatus(String(err.message || err), "error");
+        setStatus(String(err.message || err), "err");
       }
     }
 
     function renderAll(data) {
-      state = data;
-      renderMetrics(data.counts || {});
-      renderOverview(data);
+      renderStats(data.counts || {});
+      renderIdeas(data.ideas || []);
+      renderOpportunities(data.opportunities || []);
       renderTrends(data);
-      renderOpportunities(data);
-      renderIdeas(data);
-      renderReports(data);
+      renderReports(data.reports || []);
     }
 
-    async function refreshDashboard() {
-      setStatus("Refreshing dashboard…");
+    async function loadData() {
+      setStatus("Refreshing…");
       try {
         const res = await fetch("/api/dashboard/overview");
-        if (!res.ok) throw new Error("Failed to load overview");
+        if (!res.ok) throw new Error("Failed to load dashboard data");
         const data = await res.json();
         renderAll(data);
-        setStatus(`Updated · ${formatNumber(data.counts?.ideas || 0)} ideas · ${formatNumber(data.counts?.reports || 0)} reports`, "ok");
+        setStatus(`Ready · ${num(data.counts?.ideas || 0)} ideas · ${num(data.counts?.reports || 0)} reports`, "ok");
       } catch (err) {
-        setStatus(String(err.message || err), "error");
+        setStatus(String(err.message || err), "err");
       }
     }
 
-    async function runDailyPipeline() {
-      const btn = document.getElementById("runDailyBtn");
+    async function runDaily() {
+      const btn = $("runBtn");
       btn.disabled = true;
-      setStatus("Running daily intelligence pipeline (opportunities → ideas → report → memory)…");
+      setStatus("Generating ideas and today’s report…");
       try {
-        const res = await fetch("/api/dashboard/run-daily?opportunity_limit=10&ideas_per_opportunity=1&report_format=markdown", {
+        const res = await fetch("/api/dashboard/run-daily?opportunity_limit=8&ideas_per_opportunity=1&report_format=markdown", {
           method: "POST",
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.detail ? JSON.stringify(data.detail) : "Pipeline failed");
-
-        document.getElementById("runBanner").innerHTML = `
-          <div class="run-summary">
-            <strong>Daily pipeline complete.</strong>
-            Generated ${formatNumber(data.total_ideas_generated)} ideas ·
-            ${formatNumber(data.ideas_in_report)} in report ·
-            Report ID ${formatNumber(data.report_id)}
-            ${data.file_path ? " · File: " + escapeHtml(data.file_path) : ""}
+        if (!res.ok) throw new Error(typeof data.detail === "string" ? data.detail : "Run failed");
+        $("banner").innerHTML = `
+          <div class="banner">
+            Done. Created <strong>${num(data.total_ideas_generated)}</strong> ideas
+            and saved report <strong>#${num(data.report_id)}</strong>.
           </div>
         `;
-        await refreshDashboard();
-        showTab("overview");
-        setStatus("Daily ideas report ready.", "ok");
-        if (data.report_id) openReport(data.report_id);
+        await loadData();
+        showView("ideas");
+        if (data.report_id) await openReport(data.report_id);
+        setStatus("Today’s report is ready.", "ok");
       } catch (err) {
-        setStatus(String(err.message || err), "error");
+        setStatus(String(err.message || err), "err");
       } finally {
         btn.disabled = false;
       }
     }
 
-    refreshDashboard();
+    loadData();
   </script>
 </body>
 </html>

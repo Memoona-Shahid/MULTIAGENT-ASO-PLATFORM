@@ -213,60 +213,59 @@ def _render_markdown(context: dict) -> str:
     lines = [
         f"# {context['title']}",
         "",
-        f"**Period:** {context['period_start']} — {context['period_end']}",
-        f"**Generated:** {context['generated_at']}",
+        f"Generated: {context['generated_at']}",
+        f"Period: {context['period_start']} to {context['period_end']}",
         "",
-        "## Executive summary",
+        "## Summary",
         context["summary"],
+        "",
+        "## 1) Product ideas",
         "",
     ]
 
     if context["top_ideas"]:
-        lines.extend(["## Product ideas for you", ""])
-        for row in context["top_ideas"]:
+        for idx, row in enumerate(context["top_ideas"], start=1):
             lines.extend([
-                f"### {row['title']}",
-                f"- **Type:** {row['idea_type']}",
-                f"- **Confidence:** {row['confidence_score']}",
-                f"- **Problem:** {row['problem_statement']}",
-                f"- **Solution:** {row['proposed_solution']}",
-                f"- **Audience:** {row['target_audience']}",
-                f"- **Monetization:** {row['monetization_strategy']}",
+                f"### {idx}. {row['title']}",
+                f"- Type: {row['idea_type']}",
+                f"- Confidence: {row['confidence_score']}",
+                f"- Build this: {row['proposed_solution']}",
+                f"- For: {row['target_audience']}",
+                f"- Monetization: {row['monetization_strategy']}",
                 "",
             ])
     else:
-        lines.extend([
-            "## Product ideas for you",
-            "",
-            "No product ideas were available for this report.",
-            "",
-        ])
+        lines.extend(["No product ideas in this report.", ""])
 
-    lines.extend(["## Signal counts"])
-    for label, count in context["counts"].items():
-        lines.append(f"- {label}: {count}")
-
-    if context["top_trends"]:
-        lines.extend(["", "## Top trending apps", ""])
-        for row in context["top_trends"]:
-            lines.append(
-                f"- {row['name']} ({row['platform']}, {row['category'] or 'n/a'}, rank {row['rank']})"
-            )
-
-    if context["top_keywords"]:
-        lines.extend(["", "## Top keyword opportunities", ""])
-        for row in context["top_keywords"]:
-            lines.append(f"- {row['term']} ({row['platform']}, score {row['opportunity_score']})")
-
+    lines.extend(["## 2) Market opportunities", ""])
     if context["top_opportunities"]:
-        lines.extend(["", "## Top market opportunities", ""])
         for row in context["top_opportunities"]:
-            lines.append(f"- {row['title']} ({row['category'] or 'n/a'}, score {row['opportunity_score']})")
+            lines.append(
+                f"- {row['title']} (score {row['opportunity_score']})"
+            )
+    else:
+        lines.append("- None")
+
+    lines.extend(["", "## 3) Trending apps", ""])
+    if context["top_trends"]:
+        for row in context["top_trends"][:8]:
+            lines.append(
+                f"- {row['name']} — {row['platform']} / {row['category'] or 'n/a'} / rank {row['rank']}"
+            )
+    else:
+        lines.append("- None")
+
+    lines.extend(["", "## 4) Keywords", ""])
+    if context["top_keywords"]:
+        for row in context["top_keywords"][:8]:
+            lines.append(f"- {row['term']} (score {row['opportunity_score']})")
+    else:
+        lines.append("- None")
 
     stats = context["review_stats"]
     lines.extend([
         "",
-        "## Review intelligence",
+        "## 5) Review signals",
         f"- Negative reviews: {stats['negative']}",
         f"- Bug mentions: {stats['bugs']}",
         f"- Feature requests: {stats['features']}",
