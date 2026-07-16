@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from app.core.logging import logger
 from app.services.market_opportunity_client import MarketSignalClient
 from app.services.market_opportunity_service import save_market_opportunities
+from app.utils.category_normalize import infer_category_from_keyword, normalize_category
 
 DEFAULT_MIN_SCORE = 45.0
 DEFAULT_MIN_KEYWORD_OPPORTUNITY = 55.0
@@ -110,17 +111,19 @@ class MarketOpportunityAgent:
         })
 
         for row in trend_rows:
-            category = (row.category or "").strip()
+            category = normalize_category(row.category)
             if not category:
                 continue
             bucket = buckets[category]
             bucket["trend_ids"].append(row.id)
-            if getattr(row, "chart_type", None) and row.chart_type.value == "fast_growing":
+            chart = getattr(row, "chart_type", None)
+            chart_value = chart.value if hasattr(chart, "value") else chart
+            if chart_value == "fast_growing":
                 bucket["fast_growing_count"] += 1
 
         keyword_scores: dict[str, list[float]] = defaultdict(list)
         for row in keyword_rows:
-            category = self._infer_keyword_category(row.term)
+            category = infer_category_from_keyword(row.term)
             if not category:
                 continue
             bucket = buckets[category]
@@ -133,7 +136,7 @@ class MarketOpportunityAgent:
 
         competitor_category_by_id = {}
         for row in competitor_rows:
-            category = (row.category or "").strip()
+            category = normalize_category(row.category)
             if not category:
                 continue
             competitor_category_by_id[row.id] = category
@@ -154,18 +157,21 @@ class MarketOpportunityAgent:
 
         opportunities = []
         for category, bucket in buckets.items():
-            trend_score = min(30.0, bucket["fast_growing_count"] * 8 + len(bucket["trend_ids"]) * 1.5)
-            keyword_score = min(35.0, bucket["keyword_avg_opp"] * 0.35)
+            trend_score = min(40.0, bucket["fast_growing_count"] * 8 + len(bucket["trend_ids"]) * 1.5)
+            keyword_score = min(30.0, bucket["keyword_avg_opp"] * 0.30) if bucket["keyword_ids"] else 0.0
+            # Mild coverage bonus so trend-heavy categories still surface without keywords.
+            coverage_bonus = 8.0 if bucket["trend_ids"] and not bucket["keyword_ids"] else 0.0
             pain_score = min(
-                35.0,
+                30.0,
                 bucket["review_negative"] * 2.0 + bucket["review_bugs"] * 3.0 + bucket["review_requests"] * 2.5,
             )
-            score = round(min(100.0, trend_score + keyword_score + pain_score), 2)
+            score = round(min(100.0, trend_score + keyword_score + pain_score + coverage_bonus), 2)
             if score < min_score:
                 continue
 
+            title = self._opportunity_title(category, bucket)
             opportunities.append({
-                "title": f"{category}: high-growth demand with unresolved user pain",
+                "title": title,
                 "category": category,
                 "description": (
                     f"{category} shows momentum ({len(bucket['trend_ids'])} trend signals, "
@@ -184,6 +190,7 @@ class MarketOpportunityAgent:
                         "trend_score": round(trend_score, 2),
                         "keyword_score": round(keyword_score, 2),
                         "pain_score": round(pain_score, 2),
+                        "coverage_bonus": coverage_bonus,
                     },
                 },
             })
@@ -191,9 +198,13 @@ class MarketOpportunityAgent:
         opportunities.sort(key=lambda item: item["opportunity_score"], reverse=True)
         return opportunities
 
-    def _infer_keyword_category(self, term: str) -> str | None:
-        normalized = (term or "").strip().lower()
-        if not normalized:
-            return None
-        first = normalized.split()[0]
-        return first.title() if first else None
+    def _opportunity_title(self, category: str, bucket: dict) -> str:
+        if bucket["review_bugs"] or bucket["review_negative"] >= 3:
+            return f"{category}: fix review pain while demand is rising"
+        if bucket["keyword_ids"] and bucket["keyword_avg_opp"] >= 60:
+            return f"{category}: high-demand keywords with weak competition"
+        if bucket["fast_growing_count"] > 0:
+            return f"{category}: fast-growing apps signal an open niche"
+        if len(bucket["trend_ids"]) >= 20:
+            return f"{category}: strong chart presence, room for differentiation"
+        return f"{category}: emerging market gap to validate"

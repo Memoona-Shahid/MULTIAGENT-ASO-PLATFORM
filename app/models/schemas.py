@@ -183,6 +183,33 @@ class ReportGenerateRequest(BaseModel):
     opportunity_limit: int = Field(default=10, ge=1, le=100)
 
 
+# ---------- Memory ----------
+
+class MemoryEntryOut(ORMBase):
+    id: int
+    entry_type: str
+    key: str
+    value: dict
+    tags: Optional[dict] = None
+    importance: float
+    created_at: datetime
+
+
+class MemoryConsolidateRequest(BaseModel):
+    lookback_days: int = Field(default=7, ge=1, le=90)
+    per_source_limit: int = Field(default=200, ge=10, le=2000)
+    min_importance: float = Field(default=0.5, ge=0, le=10)
+    prune_below_importance: Optional[float] = Field(default=None, ge=0, le=10)
+
+
+class MemoryWriteRequest(BaseModel):
+    entry_type: str = Field(..., max_length=100)
+    key: str = Field(..., max_length=500)
+    value: dict
+    tags: Optional[dict] = None
+    importance: float = Field(default=1.0, ge=0, le=10)
+
+
 # ---------- Generic ----------
 
 class HealthOut(BaseModel):

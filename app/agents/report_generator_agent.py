@@ -122,6 +122,7 @@ class ReportGeneratorAgent:
             period_end=period_end,
             limit=per_source_limit,
         )
+        product_ideas = self._dedupe_ideas(product_ideas)
         summary["signals"]["product_ideas"] = len(product_ideas)
         summary["ideas_in_report"] = len(product_ideas)
 
@@ -203,6 +204,17 @@ class ReportGeneratorAgent:
             return period_ideas
 
         return self.client.fetch_latest_product_ideas(db, limit=min(limit, 20))
+
+    def _dedupe_ideas(self, ideas: list) -> list:
+        seen: set[str] = set()
+        unique = []
+        for idea in ideas:
+            key = f"{(idea.title or '').strip().lower()}::{idea.idea_type or ''}"
+            if key in seen:
+                continue
+            seen.add(key)
+            unique.append(idea)
+        return unique
 
     def _default_period_start(self, report_type: ReportType, period_end: datetime) -> datetime:
         days = 7 if report_type == ReportType.WEEKLY else 1
