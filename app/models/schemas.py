@@ -138,7 +138,18 @@ class ProductIdeaOut(ORMBase):
     target_audience: Optional[str] = None
     monetization_strategy: Optional[str] = None
     confidence_score: Optional[float] = None
+    source_opportunity_id: Optional[int] = None
     generated_at: datetime
+
+
+class ProductIdeaGenerateRequest(BaseModel):
+    opportunity_ids: Optional[list[int]] = Field(
+        default=None,
+        description="If omitted, uses top opportunities up to opportunity_limit.",
+    )
+    min_opportunity_score: float = Field(default=45.0, ge=0, le=100)
+    ideas_per_opportunity: int = Field(default=1, ge=1, le=3)
+    opportunity_limit: int = Field(default=50, ge=1, le=500)
 
 
 # ---------- Reports ----------
@@ -158,6 +169,18 @@ class ReportOut(ORMBase):
 class ReportGenerateRequest(BaseModel):
     report_type: ReportType = ReportType.DAILY
     report_format: ReportFormat = ReportFormat.MARKDOWN
+    generate_ideas: bool = Field(
+        default=True,
+        description="When true, generates fresh product ideas before building the report.",
+    )
+    min_opportunity_score: float = Field(
+        default=0.0,
+        ge=0,
+        le=100,
+        description="Minimum opportunity score when auto-generating ideas for the report.",
+    )
+    ideas_per_opportunity: int = Field(default=1, ge=1, le=3)
+    opportunity_limit: int = Field(default=10, ge=1, le=100)
 
 
 # ---------- Generic ----------

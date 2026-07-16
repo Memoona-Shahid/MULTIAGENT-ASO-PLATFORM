@@ -227,7 +227,7 @@ DASHBOARD_HTML = """
 <body>
   <header>
     <h1>AI ASO Platform Test UI</h1>
-    <p>Manual browser controls for Modules 1-6. These buttons call the same FastAPI endpoints you test from PowerShell.</p>
+    <p>Manual browser controls for Modules 1-9. These buttons call the same FastAPI endpoints you test from PowerShell.</p>
   </header>
   <main>
     <div>
@@ -382,6 +382,66 @@ DASHBOARD_HTML = """
         <button class="secondary" onclick="listOpportunities()">List Opportunities</button>
       </section>
 
+      <section>
+        <h2>Module 8: AI Idea Generator</h2>
+        <div class="grid">
+          <div>
+            <label for="ideaOpportunityIds">Opportunity IDs (optional)</label>
+            <input id="ideaOpportunityIds" placeholder="e.g. 1,2,3">
+          </div>
+          <div>
+            <label for="ideaMinOppScore">Min opportunity score (auto mode only)</label>
+            <input id="ideaMinOppScore" type="number" value="0" min="0" max="100">
+          </div>
+        </div>
+        <div class="grid">
+          <div>
+            <label for="ideasPerOpportunity">Ideas per opportunity</label>
+            <input id="ideasPerOpportunity" type="number" value="1" min="1" max="3">
+          </div>
+          <div>
+            <label for="ideaOppLimit">Opportunity limit</label>
+            <input id="ideaOppLimit" type="number" value="50" min="1" max="500">
+          </div>
+        </div>
+        <button onclick="runIdeaGeneration()">Generate Ideas</button>
+        <button class="secondary" onclick="listProductIdeas()">List Ideas</button>
+      </section>
+
+      <section>
+        <h2>Module 9: Daily Ideas Report</h2>
+        <p class="meta">Generates fresh product ideas from your opportunities, then saves a daily report with those ideas front and center.</p>
+        <div class="grid">
+          <div>
+            <label for="reportType">Report type</label>
+            <select id="reportType">
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+            </select>
+          </div>
+          <div>
+            <label for="reportFormat">Report format</label>
+            <select id="reportFormat">
+              <option value="markdown">Markdown</option>
+              <option value="html">HTML</option>
+              <option value="pdf">PDF</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid">
+          <div>
+            <label for="reportIdeasPerOpp">Ideas per opportunity</label>
+            <input id="reportIdeasPerOpp" type="number" value="1" min="1" max="3">
+          </div>
+          <div>
+            <label for="reportOppLimit">Opportunities to use</label>
+            <input id="reportOppLimit" type="number" value="10" min="1" max="100">
+          </div>
+        </div>
+        <button onclick="runReportGeneration()">Generate Daily Ideas Report</button>
+        <button class="secondary" onclick="listReports()">List Reports</button>
+      </section>
+
     </div>
 
     <aside>
@@ -403,8 +463,9 @@ DASHBOARD_HTML = """
       return document.getElementById(id).value.trim();
     }
 
-    function numberValue(id) {
-      return Number(value(id));
+    function numberValue(id, fallback = 0) {
+      const parsed = Number(value(id));
+      return Number.isFinite(parsed) ? parsed : fallback;
     }
 
     function csv(id) {
@@ -712,14 +773,93 @@ DASHBOARD_HTML = """
       `;
     }
 
+    function renderProductIdeas(items) {
+      if (!items.length) return emptyState("No product ideas saved yet. Generate ideas from opportunities first.");
+      return `
+        <h2>Product Ideas</h2>
+        ${items.map(item => `
+          <div class="item-card">
+            <h3>${escapeHtml(item.title)}</h3>
+            <div class="badges">
+              <span class="badge info">${titleCase(item.idea_type)}</span>
+              <span class="badge good">Confidence ${formatNumber(item.confidence_score)}</span>
+              ${item.source_opportunity_id ? `<span class="badge">Opportunity ID ${formatNumber(item.source_opportunity_id)}</span>` : ""}
+            </div>
+            <p><strong>Problem:</strong> ${escapeHtml(item.problem_statement || "Not available")}</p>
+            <p><strong>Solution:</strong> ${escapeHtml(item.proposed_solution || "Not available")}</p>
+            <p class="meta">Audience: ${escapeHtml(item.target_audience || "Not available")}</p>
+            <p class="meta">Monetization: ${escapeHtml(item.monetization_strategy || "Not available")}</p>
+          </div>
+        `).join("")}
+      `;
+    }
+
+    function renderIdeaGenerationSummary(data) {
+      const skippedCount = Object.keys(data.skipped || {}).length;
+      return `
+        <h2>Idea Generation</h2>
+        <div class="summary-grid">
+          ${metric("Ideas saved", data.total_ideas)}
+          ${metric("Opportunities used", Object.keys(data.opportunities || {}).length)}
+          ${metric("Skipped", skippedCount)}
+        </div>
+        ${renderSimpleCounts("Ideas per opportunity", data.opportunities)}
+        ${skippedBlock(data.skipped)}
+      `;
+    }
+
+    function renderReportGenerationSummary(data) {
+      const skippedCount = Object.keys(data.skipped || {}).length;
+      const ideaGen = data.idea_generation || {};
+      return `
+        <h2>Daily Ideas Report</h2>
+        <div class="summary-grid">
+          ${metric("Ideas in report", data.ideas_in_report)}
+          ${metric("Ideas generated now", ideaGen.total_ideas ?? 0)}
+          ${metric("Report ID", data.report_id)}
+        </div>
+        <p><strong>Type:</strong> ${escapeHtml(titleCase(data.report_type || ""))}</p>
+        <p><strong>Format:</strong> ${escapeHtml(titleCase(data.report_format || ""))}</p>
+        <p><strong>Period:</strong> ${escapeHtml(formatDate(data.period_start))} — ${escapeHtml(formatDate(data.period_end))}</p>
+        ${data.file_path ? `<p><strong>File:</strong> ${escapeHtml(data.file_path)}</p>` : ""}
+        ${renderSimpleCounts("Signals included", data.signals)}
+        ${renderSimpleCounts("Ideas per opportunity", ideaGen.opportunities)}
+        ${skippedBlock(data.skipped)}
+      `;
+    }
+
+    function renderReports(items) {
+      if (!items.length) return emptyState("No reports saved yet. Click 'Generate Report' first.");
+      return `
+        <h2>Reports</h2>
+        ${items.map(item => `
+          <div class="item-card">
+            <h3>${escapeHtml(item.title)}</h3>
+            <div class="badges">
+              <span class="badge info">${titleCase(item.report_type)}</span>
+              <span class="badge">${titleCase(item.report_format)}</span>
+            </div>
+            <p>${escapeHtml(item.summary || "No summary available")}</p>
+            <p class="meta">Generated: ${formatDate(item.generated_at)}</p>
+            <p class="meta">Period: ${formatDate(item.period_start)} — ${formatDate(item.period_end)}</p>
+            ${item.file_path ? `<p class="meta">File: ${escapeHtml(item.file_path)}</p>` : ""}
+          </div>
+        `).join("")}
+      `;
+    }
+
     function renderReadable(path, data) {
       if (path.startsWith("/health")) return renderHealth(data || {});
       if (path.includes("/api/opportunities/synthesize")) return renderOpportunitySynthesisSummary(data || {});
+      if (path.includes("/api/product-ideas/generate")) return renderIdeaGenerationSummary(data || {});
+      if (path.includes("/api/reports/generate")) return renderReportGenerationSummary(data || {});
       if (path.includes("/research") || path.includes("/analyze")) return renderRunSummary(data || {}, "Run Complete");
       if (Array.isArray(data)) {
         if (path.includes("/trending")) return renderTrendingApps(data);
         if (path.includes("/keywords")) return renderKeywords(data);
         if (path.includes("/opportunities")) return renderOpportunities(data);
+        if (path.includes("/product-ideas")) return renderProductIdeas(data);
+        if (path.includes("/reports")) return renderReports(data);
         if (path.includes("/competitors") && path.includes("/reviews")) return renderReviews(data);
         if (path.includes("/competitors")) return renderCompetitors(data);
         if (path.includes("/reviews")) return renderReviews(data);
@@ -853,6 +993,42 @@ DASHBOARD_HTML = """
         category: value("oppListCategory"),
         min_opportunity_score: numberValue("oppListMinScore"),
         limit: numberValue("oppListLimit"),
+      })}`);
+    }
+
+    function runIdeaGeneration() {
+      const ids = csv("ideaOpportunityIds").map(Number).filter((n) => Number.isFinite(n) && n > 0);
+      const body = {
+        min_opportunity_score: numberValue("ideaMinOppScore", 0),
+        ideas_per_opportunity: Math.min(3, Math.max(1, numberValue("ideasPerOpportunity", 1))),
+        opportunity_limit: Math.max(1, numberValue("ideaOppLimit", 50)),
+      };
+      if (ids.length) {
+        body.opportunity_ids = ids;
+      }
+      requestJson("/api/product-ideas/generate", { method: "POST", body: JSON.stringify(body) });
+    }
+
+    function listProductIdeas() {
+      requestJson("/api/product-ideas?limit=50");
+    }
+
+    function runReportGeneration() {
+      const body = {
+        report_type: value("reportType") || "daily",
+        report_format: value("reportFormat") || "markdown",
+        generate_ideas: true,
+        min_opportunity_score: 0,
+        ideas_per_opportunity: Math.min(3, Math.max(1, numberValue("reportIdeasPerOpp", 1))),
+        opportunity_limit: Math.max(1, numberValue("reportOppLimit", 10)),
+      };
+      requestJson("/api/reports/generate", { method: "POST", body: JSON.stringify(body) });
+    }
+
+    function listReports() {
+      requestJson(`/api/reports${query({
+        report_type: value("reportType") || undefined,
+        limit: 50,
       })}`);
     }
 

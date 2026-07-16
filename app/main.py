@@ -16,9 +16,38 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.agent_runtime import agent_runtime
 from app.core.config import settings
-from app.core.database import init_db
+from app.core.database import db_session, init_db
 from app.core.logging import logger
+from app.core.scheduler import (
+    register_daily_job,
+    register_weekly_job,
+    shutdown_scheduler,
+    start_scheduler,
+)
+from app.models.db_models import ReportFormat, ReportType
 from app.models.schemas import HealthOut
+
+
+def _run_scheduled_daily_report() -> None:
+    from app.agents.report_generator_agent import ReportGeneratorAgent
+
+    with db_session() as db:
+        ReportGeneratorAgent().run(
+            db,
+            report_type=ReportType.DAILY,
+            report_format=ReportFormat.MARKDOWN,
+        )
+
+
+def _run_scheduled_weekly_report() -> None:
+    from app.agents.report_generator_agent import ReportGeneratorAgent
+
+    with db_session() as db:
+        ReportGeneratorAgent().run(
+            db,
+            report_type=ReportType.WEEKLY,
+            report_format=ReportFormat.MARKDOWN,
+        )
 
 
 @asynccontextmanager
@@ -26,7 +55,11 @@ async def lifespan(app: FastAPI):
     logger.info("Starting {} [{}]", settings.app_name, settings.app_env)
     init_db()
     logger.info("Agent runtime backend: {}", settings.agent_runtime)
+    register_daily_job(_run_scheduled_daily_report)
+    register_weekly_job(_run_scheduled_weekly_report)
+    start_scheduler()
     yield
+    shutdown_scheduler()
     logger.info("Shutting down {}", settings.app_name)
 
 
@@ -61,7 +94,7 @@ def health_runtime() -> dict:
 
 
 # --- Routers ---
-from app.api import app_store, competitors, dashboard, google_play, keywords, opportunities, reviews  # noqa: E402
+from app.api import app_store, competitors, dashboard, google_play, keywords, opportunities, product_ideas, reports, reviews  # noqa: E402
 
 app.include_router(dashboard.router, tags=["dashboard"])
 app.include_router(app_store.router, prefix="/api/app-store", tags=["app-store"])
@@ -70,5 +103,5 @@ app.include_router(keywords.router, prefix="/api/keywords", tags=["keywords"])
 app.include_router(competitors.router, prefix="/api/competitors", tags=["competitors"])
 app.include_router(reviews.router, prefix="/api/reviews", tags=["reviews"])
 app.include_router(opportunities.router, prefix="/api/opportunities", tags=["opportunities"])
-
-# --- Routers from future modules get included here ---
+app.include_router(product_ideas.router, prefix="/api/product-ideas", tags=["product-ideas"])
+app.include_router(reports.router, prefix="/api/reports", tags=["reports"])
