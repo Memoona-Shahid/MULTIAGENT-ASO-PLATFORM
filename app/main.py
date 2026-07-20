@@ -29,12 +29,14 @@ from app.models.schemas import HealthOut
 
 
 def _run_scheduled_daily_report() -> None:
-    from app.agents.report_generator_agent import ReportGeneratorAgent
+    from app.agents.coordinator_agent import CoordinatorAgent
 
     with db_session() as db:
-        ReportGeneratorAgent().run(
+        CoordinatorAgent().run_daily_pipeline(
             db,
-            report_type=ReportType.DAILY,
+            synthesize_opportunities=True,
+            research_keywords=True,
+            analyze_competitors=True,
             report_format=ReportFormat.MARKDOWN,
         )
 

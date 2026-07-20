@@ -3,27 +3,26 @@ AgentRuntime abstraction layer.
 
 WHY THIS EXISTS
 ----------------
-The project brief specifies "OpenFang/ZeroClaw" as the agent runtime. That's
-not a runtime I can find any public documentation for, so instead of
-guessing at an API and baking that guess into every agent, every agent in
-this codebase talks to an `AgentRuntime` interface instead of a concrete
-SDK. Two things follow from that:
+The project brief specifies "OpenFang/ZeroClaw" as the agent runtime. Every
+agent talks to an `AgentRuntime` interface instead of a concrete SDK:
 
-  1. Every module (2-10) can be built and fully tested right now using
-     `MockAgentRuntime`, which runs CrewAI agents locally with whatever LLM
-     key you put in .env (OpenAI/Anthropic/etc).
-  2. When you get OpenFang/ZeroClaw docs (Module 11), we implement
-     `OpenFangZeroClawRuntime` below to satisfy this same interface and
-     flip `AGENT_RUNTIME=openfang_zeroclaw` in .env. Nothing else in the
-     codebase changes.
+  1. Modules 2–10 / 12–14 work with `MockAgentRuntime` (AGENT_RUNTIME=mock).
+  2. Module 11 implements `OpenFangZeroClawRuntime` against the ZeroClaw
+     HTTP gateway (https://zeroclaw.net / zeroclaw-labs). Flip
+     AGENT_RUNTIME=openfang_zeroclaw once a gateway is running.
 
-This is exactly the same pattern used for EmailProviderClient in your
-Customer Support Automation Platform project.
+"OpenFang" in the brief maps to OpenClaw's lineage; ZeroClaw is the
+lightweight Rust runtime that exposes /health, /webhook, and /api/chat.
 """
 
+from __future__ import annotations
+
+import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Optional
+
+import httpx
 
 from app.core.config import settings
 from app.core.logging import logger
@@ -86,31 +85,134 @@ class MockAgentRuntime(AgentRuntime):
         return True
 
 
+def _json_safe(value: Any) -> Any:
+    """Drop callables / non-JSON values so payloads can be sent to ZeroClaw."""
+    if callable(value):
+        return "<callable>"
+    if isinstance(value, dict):
+        return {str(k): _json_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(v) for v in value]
+    try:
+        json.dumps(value)
+        return value
+    except TypeError:
+        return str(value)
+
+
 class OpenFangZeroClawRuntime(AgentRuntime):
     """
-    PLACEHOLDER — not implemented.
+    ZeroClaw HTTP gateway client (OpenClaw-compatible lineage).
 
-    OpenFang/ZeroClaw isn't a runtime I have documentation for. Rather than
-    fabricate an API and give you code that silently does the wrong thing,
-    this raises clearly until it's implemented. See the ChatGPT prompt for
-    Module 11 to get the real spec, then fill in run_task()/health_check()
-    to match its actual API (likely: auth, submit task, poll/stream result).
+    Expects a running `zeroclaw gateway` (default http://127.0.0.1:42617) with:
+      GET  /health
+      POST /api/chat   — agent loop with tools (preferred)
+      POST /webhook    — simple chat fallback
+
+    Auth: Authorization: Bearer <OPENFANG_ZEROCLAW_API_KEY> when set.
     """
 
-    def __init__(self):
-        if not settings.openfang_zeroclaw_base_url:
+    def __init__(
+        self,
+        base_url: str | None = None,
+        api_key: str | None = None,
+        timeout: float | None = None,
+    ):
+        self.base_url = (base_url or settings.openfang_zeroclaw_base_url or "").rstrip("/")
+        self.api_key = api_key if api_key is not None else settings.openfang_zeroclaw_api_key
+        self.timeout = timeout if timeout is not None else max(settings.request_timeout_seconds, 60)
+        if not self.base_url:
             logger.warning(
                 "AGENT_RUNTIME=openfang_zeroclaw but OPENFANG_ZEROCLAW_BASE_URL is not set."
             )
 
-    def run_task(self, agent_name: str, task_name: str, inputs: dict) -> AgentTaskResult:
-        raise NotImplementedError(
-            "OpenFangZeroClawRuntime is a placeholder. Implement this once you have "
-            "the OpenFang/ZeroClaw SDK/API docs (see Module 11)."
-        )
+    def _headers(self) -> dict[str, str]:
+        headers = {"Content-Type": "application/json", "Accept": "application/json"}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+        return headers
 
     def health_check(self) -> bool:
-        return False
+        if not self.base_url:
+            return False
+        try:
+            with httpx.Client(timeout=min(self.timeout, 10), follow_redirects=True) as client:
+                response = client.get(f"{self.base_url}/health")
+            if response.status_code != 200:
+                return False
+            data = response.json()
+            status = str(data.get("status", "")).lower()
+            return status in {"ok", "healthy", "up", "ready"} or data.get("ok") is True
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("ZeroClaw health_check failed: {}", exc)
+            return False
+
+    def run_task(self, agent_name: str, task_name: str, inputs: dict) -> AgentTaskResult:
+        if not self.base_url:
+            return AgentTaskResult(
+                agent_name=agent_name,
+                task_name=task_name,
+                output=None,
+                success=False,
+                error="OPENFANG_ZEROCLAW_BASE_URL is not configured",
+            )
+
+        payload_inputs = _json_safe({k: v for k, v in inputs.items() if k != "fn"})
+        message = (
+            f"ASO platform task.\n"
+            f"agent: {agent_name}\n"
+            f"task: {task_name}\n"
+            f"inputs_json: {json.dumps(payload_inputs, ensure_ascii=False)}\n"
+            "Acknowledge the task and summarize what should happen next."
+        )
+
+        try:
+            raw, output = self._post_chat(message, agent_name=agent_name, task_name=task_name)
+            return AgentTaskResult(
+                agent_name=agent_name,
+                task_name=task_name,
+                output=output,
+                success=True,
+                raw=raw if isinstance(raw, dict) else {"response": raw},
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("ZeroClaw run_task {}::{} failed", agent_name, task_name)
+            return AgentTaskResult(
+                agent_name=agent_name,
+                task_name=task_name,
+                output=None,
+                success=False,
+                error=str(exc),
+            )
+
+    def _post_chat(self, message: str, *, agent_name: str, task_name: str) -> tuple[Any, Any]:
+        body = {
+            "message": message,
+            "session_id": f"aso:{agent_name}:{task_name}",
+            "context": [
+                {"role": "system", "content": "You are the runtime for an ASO multi-agent platform."}
+            ],
+        }
+        with httpx.Client(timeout=self.timeout, follow_redirects=True) as client:
+            # Prefer the tool-capable chat endpoint; fall back to simple webhook.
+            response = client.post(
+                f"{self.base_url}/api/chat",
+                headers=self._headers(),
+                json=body,
+            )
+            if response.status_code in {404, 405}:
+                response = client.post(
+                    f"{self.base_url}/webhook",
+                    headers=self._headers(),
+                    json={"message": message},
+                )
+            response.raise_for_status()
+            data = response.json()
+
+        if isinstance(data, dict):
+            output = data.get("response") or data.get("full_response") or data.get("output") or data
+            return data, output
+        return data, data
 
 
 def get_agent_runtime() -> AgentRuntime:

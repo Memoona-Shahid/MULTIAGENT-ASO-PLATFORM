@@ -20,6 +20,7 @@ from app.agents.market_opportunity_agent import MarketOpportunityAgent
 from app.agents.memory_agent import MemoryAgent
 from app.agents.report_generator_agent import ReportGeneratorAgent
 from app.core.agent_runtime import agent_runtime
+from app.core.config import settings
 from app.core.logging import logger
 from app.models.db_models import Platform, ReportFormat, ReportType
 from app.services.market_seed_service import (
@@ -60,7 +61,26 @@ class CoordinatorAgent:
         consolidate_memory: bool = False,
         keyword_seed_limit: int = 10,
         competitor_limit: int = 6,
+        use_crewai: bool | None = None,
+        research_trends: bool = False,
     ) -> dict:
+        # Module 12: optional CrewAI path (same pipeline, tools wrap these agents).
+        crew_mode = settings.orchestration_mode == "crewai" if use_crewai is None else use_crewai
+        if crew_mode:
+            from app.agents.crew import run_daily_crew
+
+            return run_daily_crew(
+                db,
+                research_trends=research_trends,
+                research_keywords=research_keywords,
+                analyze_competitors=analyze_competitors,
+                synthesize_opportunities=synthesize_opportunities,
+                consolidate_memory=consolidate_memory,
+                opportunity_limit=opportunity_limit,
+                ideas_per_opportunity=ideas_per_opportunity,
+                report_format=report_format,
+            )
+
         started_at = datetime.now(timezone.utc)
         summary: dict = {
             "pipeline": "daily_intelligence",

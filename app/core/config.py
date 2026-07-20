@@ -21,10 +21,15 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./data/db/aso_platform.db"
 
     # --- Agent Runtime ---
-    # "mock" (default, works offline) or "openfang_zeroclaw" (Module 11, pending)
+    # "mock" (default, works offline) or "openfang_zeroclaw" (ZeroClaw HTTP gateway)
     agent_runtime: str = "mock"
     openfang_zeroclaw_api_key: str = ""
     openfang_zeroclaw_base_url: str = ""
+
+    # --- Orchestration ---
+    # "direct" = CoordinatorAgent Python pipeline (default, no LLM required)
+    # "crewai" = Module 12 Crew wrapping the same agents as tools (needs LLM key)
+    orchestration_mode: str = "direct"
 
     # --- LLM Provider ---
     openai_api_key: str = ""

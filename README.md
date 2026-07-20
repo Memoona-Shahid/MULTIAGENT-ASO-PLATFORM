@@ -8,50 +8,54 @@ replacing a manual ASO specialist.
 
 | # | Module | Status |
 |---|--------|--------|
-| 1 | Project Foundation (this delivery) | ✅ Done |
-| 2 | App Store Research Agent | ⏳ Next |
-| 3 | Google Play Research Agent | ⏳ |
-| 4 | Keyword Research Agent | ⏳ |
-| 5 | Competitor Analysis Agent | ⏳ |
-| 6 | Reviews Intelligence Agent | ⏳ |
-| 7 | Market Opportunity Agent | ⏳ |
-| 8 | AI Idea Generator Agent | ⏳ |
-| 9 | Report Generator Agent | ⏳ |
-| 10 | Memory Agent | ⏳ |
-| 11 | Coordinator Agent + Agent Runtime (OpenFang/ZeroClaw) | ⚠️ Blocked — see below |
-| 12 | CrewAI Orchestration | ⏳ (depends on 11) |
-| 13 | Dashboard | ⏳ |
-| 14 | Testing / Docker / Docs polish | ⏳ |
+| 1 | Project Foundation | ✅ Done |
+| 2 | App Store Research Agent | ✅ Done |
+| 3 | Google Play Research Agent | ✅ Done |
+| 4 | Keyword Research Agent | ✅ Done |
+| 5 | Competitor Analysis Agent | ✅ Done |
+| 6 | Reviews Intelligence Agent | ✅ Done |
+| 7 | Market Opportunity Agent | ✅ Done |
+| 8 | AI Idea Generator Agent | ✅ Done |
+| 9 | Report Generator Agent | ✅ Done |
+| 10 | Memory Agent | ✅ Done |
+| 11 | Coordinator Agent + Agent Runtime (ZeroClaw) | ✅ Done |
+| 12 | CrewAI Orchestration | ✅ Done |
+| 13 | Dashboard | ✅ Done |
+| 14 | Testing / Docker / Docs polish | ✅ Done |
 
-### A note on Module 11 (OpenFang/ZeroClaw)
+### Module 11 — ZeroClaw runtime
 
-"OpenFang/ZeroClaw" is not a runtime with public documentation available.
-Every agent in this codebase is built against an `AgentRuntime` abstract
-interface (`app/core/agent_runtime.py`) instead of any concrete SDK, so:
+`OpenFangZeroClawRuntime` talks to a running [ZeroClaw](https://zeroclaw.net)
+HTTP gateway (OpenClaw-compatible lineage):
 
-- **Modules 2–10 and 12–14 work fully today** using `MockAgentRuntime`
-  (set `AGENT_RUNTIME=mock` in `.env`, the default).
-- When you're ready for Module 11, get the real OpenFang/ZeroClaw
-  SDK/API docs (ask ChatGPT — see prompt below), then implement
-  `OpenFangZeroClawRuntime.run_task()` / `.health_check()` to match. Flip
-  `AGENT_RUNTIME=openfang_zeroclaw` in `.env` — nothing else in the
-  codebase needs to change.
+```bash
+# On a machine with ZeroClaw installed:
+zeroclaw gateway   # default http://127.0.0.1:42617
+# Pair once, save the bearer token into .env
+```
 
-**Suggested ChatGPT prompt for Module 11**, once you're ready:
+```env
+AGENT_RUNTIME=openfang_zeroclaw
+OPENFANG_ZEROCLAW_BASE_URL=http://127.0.0.1:42617
+OPENFANG_ZEROCLAW_API_KEY=zcl_live_...
+```
 
-> I'm integrating an agent runtime called "OpenFang/ZeroClaw" into a Python
-> FastAPI + CrewAI project. Explain what OpenFang/ZeroClaw is, how to
-> install/authenticate it, and show a minimal Python example of submitting
-> a task to an agent and retrieving the result (sync and async if
-> supported). I need to implement it against this interface:
->
-> ```python
-> class AgentRuntime(ABC):
->     def run_task(self, agent_name: str, task_name: str, inputs: dict) -> AgentTaskResult: ...
->     def health_check(self) -> bool: ...
-> ```
->
-> Give me the concrete implementation of both methods.
+Endpoints used: `GET /health`, `POST /api/chat` (fallback `POST /webhook`).
+Default remains `AGENT_RUNTIME=mock` for offline/dev.
+
+### Module 12 — CrewAI orchestration
+
+Existing agents stay plain Python. CrewAI wraps them as tools under
+`app/agents/crew/`. Choose orchestration mode:
+
+```env
+ORCHESTRATION_MODE=direct   # CoordinatorAgent (default, no LLM required)
+ORCHESTRATION_MODE=crewai   # sequential Crew (needs OPENAI_API_KEY or ANTHROPIC_API_KEY)
+```
+
+Dashboard override: `POST /api/dashboard/run-daily?use_crewai=true`.
+If CrewAI mode is selected but no LLM key is set, the pipeline falls back to
+the direct coordinator automatically.
 
 ## Project Structure
 
@@ -97,14 +101,16 @@ pip install -r requirements.txt
 
 # 3. Configure environment
 cp .env.example .env
-# Edit .env: add your OPENAI_API_KEY or ANTHROPIC_API_KEY (needed from Module 2+)
+# Edit .env: add OPENAI_API_KEY (needed for ORCHESTRATION_MODE=crewai)
 
 # 4. Run tests
 pytest -v
 
 # 5. Run the API
 uvicorn app.main:app --reload
-# Visit http://localhost:8000/health
+# Visit http://localhost:8000/          (dashboard)
+#       http://localhost:8000/health
+#       http://localhost:8000/docs
 ```
 
 ## Docker
@@ -113,29 +119,20 @@ uvicorn app.main:app --reload
 docker compose up --build
 ```
 
-## What's included in Module 1
+## Orchestration quick test (PowerShell)
 
-- **Folder structure** for the full project (agents, services, api, utils, models)
-- **Config system** (`app/core/config.py`) — single source of truth for all env vars
-- **Logging** (`app/core/logging.py`) — console + rotating file logs, error-only log
-- **Database layer** (`app/core/database.py`) — SQLAlchemy engine/session, SQLite by
-  default, one-line swap to Postgres for production
-- **Full ORM schema** (`app/models/db_models.py`) covering every entity in the brief:
-  `TrendingApp`, `Keyword`, `Competitor`, `Review`, `MarketOpportunity`,
-  `ProductIdea`, `Report`, `MemoryEntry`
-- **Pydantic API schemas** (`app/models/schemas.py`)
-- **Retry utility** (`app/utils/retry.py`) — exponential backoff for flaky
-  scraping/API calls, used by every research agent from Module 2 onward
-- **AgentRuntime abstraction** (`app/core/agent_runtime.py`) — the key
-  architectural piece that lets us build everything now and swap in
-  OpenFang/ZeroClaw later
-- **Scheduler shell** (`app/core/scheduler.py`) — APScheduler wired up,
-  ready for Module 9 to register the daily/weekly report jobs
-- **FastAPI app** (`app/main.py`) with `/health` and `/health/runtime` endpoints
-- **Docker + docker-compose** — production-ready container setup
-- **12 passing pytest tests** covering config, DB models, agent runtime, and API
+```powershell
+# Direct coordinator (default)
+Invoke-RestMethod -Method POST -Uri "http://localhost:8000/api/dashboard/run-daily?opportunity_limit=5"
 
-## Next: Module 2 — App Store Research Agent
+# Force CrewAI path (falls back to direct if no LLM key)
+Invoke-RestMethod -Method POST -Uri "http://localhost:8000/api/dashboard/run-daily?use_crewai=true&opportunity_limit=5"
+```
 
-Discovers trending apps from Apple's App Store (Top Free/Paid/Grossing +
-fast-growing), normalizes them into `TrendingApp` rows.
+## Architecture notes
+
+- **Agents** (`app/agents/*`) are plain Python — unit-testable without an LLM.
+- **CrewAI** (`app/agents/crew/`) wraps those agents as tools for multi-agent runs.
+- **ZeroClaw** (`OpenFangZeroClawRuntime`) is an optional remote runtime for
+  telemetry / task dispatch via HTTP gateway.
+- **Dashboard** at `/` aggregates ideas, opportunities, trends, and reports.

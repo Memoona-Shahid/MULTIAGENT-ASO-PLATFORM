@@ -38,8 +38,9 @@ def test_mock_runtime_run_task_with_failing_fn():
     assert "simulated failure" in result.error
 
 
-def test_openfang_zeroclaw_runtime_raises_not_implemented():
-    runtime = OpenFangZeroClawRuntime()
-    with pytest.raises(NotImplementedError):
-        runtime.run_task("Coordinator", "dispatch", {})
+def test_openfang_zeroclaw_runtime_unconfigured_is_unhealthy():
+    runtime = OpenFangZeroClawRuntime(base_url="", api_key="")
     assert runtime.health_check() is False
+    result = runtime.run_task("Coordinator", "dispatch", {})
+    assert result.success is False
+    assert "BASE_URL" in (result.error or "")

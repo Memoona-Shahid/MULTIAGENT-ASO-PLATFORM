@@ -138,6 +138,10 @@ def run_daily_intelligence(
     report_format: ReportFormat = Query(default=ReportFormat.MARKDOWN),
     opportunity_limit: int = Query(default=10, ge=1, le=50),
     ideas_per_opportunity: int = Query(default=1, ge=1, le=3),
+    use_crewai: bool | None = Query(
+        default=None,
+        description="Override ORCHESTRATION_MODE. True forces CrewAI; False forces direct coordinator.",
+    ),
     db: Session = Depends(get_db),
 ) -> dict:
     agent = CoordinatorAgent()
@@ -148,6 +152,7 @@ def run_daily_intelligence(
         ideas_per_opportunity=ideas_per_opportunity,
         report_format=report_format,
         consolidate_memory=False,
+        use_crewai=use_crewai,
     )
 
 
