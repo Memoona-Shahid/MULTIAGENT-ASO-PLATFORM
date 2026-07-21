@@ -177,6 +177,73 @@ DASHBOARD_HTML = r"""
       font-size: 15px;
     }
     .item p:last-child { margin-bottom: 0; }
+    .item.clickable {
+      cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .item.clickable:hover {
+      border-color: #99f6e4;
+      box-shadow: 0 4px 14px rgba(15, 118, 110, 0.08);
+    }
+    .item .teaser {
+      color: var(--muted);
+      font-size: 15px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .item .open-link {
+      margin-top: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+    .detail-panel {
+      margin-top: 18px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 20px 22px;
+    }
+    .detail-panel .detail-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      margin-bottom: 16px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+    .detail-panel .detail-head h3 {
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+    .detail-section {
+      margin-bottom: 18px;
+    }
+    .detail-section:last-child { margin-bottom: 0; }
+    .detail-section h4 {
+      margin: 0 0 6px;
+      font-family: Fraunces, Georgia, serif;
+      font-size: 17px;
+    }
+    .detail-section p {
+      margin: 0;
+      font-size: 15px;
+      white-space: pre-wrap;
+      line-height: 1.6;
+    }
+    .detail-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 16px;
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+      font-size: 13px;
+      color: var(--muted);
+    }
     .label {
       display: block;
       font-size: 11px;
@@ -278,8 +345,9 @@ DASHBOARD_HTML = r"""
 
     <section class="view on" id="view-ideas">
       <h2 class="section-title">Product ideas</h2>
-      <p class="section-help">What to build next — one clear idea per market gap.</p>
+      <p class="section-help">What to build next — click an idea for a plain-English product brief.</p>
       <div class="list" id="ideas"></div>
+      <div id="ideaDetail"></div>
     </section>
 
     <section class="view" id="view-opportunities">
@@ -362,33 +430,70 @@ DASHBOARD_HTML = r"""
     function renderIdeas(items) {
       if (!items?.length) {
         $("ideas").innerHTML = empty("No ideas yet. Click “Generate today’s report”.");
+        $("ideaDetail").innerHTML = "";
         return;
       }
       $("ideas").innerHTML = items.map(item => `
-        <article class="item">
+        <article class="item clickable" onclick="openIdea(${item.id})" role="button" tabindex="0"
+          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openIdea(${item.id})}">
           <h3>${esc(item.title)}</h3>
           <div class="tags">
             <span class="tag">${esc(nice(item.idea_type))}</span>
             <span class="tag soft">Confidence ${num(item.confidence_score)}</span>
           </div>
-          <div class="field">
-            <span class="label">Why this</span>
-            <p>${esc(shortProblem(item.problem_statement))}</p>
-          </div>
-          <div class="field">
-            <span class="label">What to build</span>
-            <p>${esc(item.proposed_solution || "—")}</p>
-          </div>
-          <div class="field">
-            <span class="label">Who it’s for</span>
-            <p class="quiet">${esc(item.target_audience || "—")}</p>
-          </div>
-          <div class="field">
-            <span class="label">How it makes money</span>
-            <p class="quiet">${esc(item.monetization_strategy || "—")}</p>
-          </div>
+          <p class="teaser">${esc(item.proposed_solution || shortProblem(item.problem_statement))}</p>
+          <div class="open-link">View full idea details →</div>
         </article>
       `).join("");
+    }
+
+    function renderIdeaDetail(data) {
+      const idea = data.idea || {};
+      const sections = data.detail_sections || [];
+      $("ideaDetail").innerHTML = `
+        <div class="detail-panel">
+          <div class="detail-head">
+            <div>
+              <h3>${esc(idea.title)}</h3>
+              <div class="tags">
+                <span class="tag">${esc(nice(idea.idea_type))}</span>
+                <span class="tag soft">Confidence ${num(idea.confidence_score)}</span>
+                ${idea.source_opportunity_id ? `<span class="tag warm">Opportunity #${esc(idea.source_opportunity_id)}</span>` : ""}
+              </div>
+            </div>
+            <button class="ghost" onclick="closeIdeaDetail()">Close</button>
+          </div>
+          ${sections.map(section => `
+            <div class="detail-section">
+              <h4>${esc(section.title)}</h4>
+              <p>${esc(section.body)}</p>
+            </div>
+          `).join("")}
+          <div class="detail-meta">
+            <span>Generated ${when(idea.generated_at)}</span>
+            <span>Idea ID #${esc(idea.id)}</span>
+          </div>
+        </div>
+      `;
+      $("ideaDetail").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+
+    function closeIdeaDetail() {
+      $("ideaDetail").innerHTML = "";
+    }
+
+    async function openIdea(id) {
+      setStatus("Loading idea details…");
+      try {
+        const res = await fetch(`/api/dashboard/ideas/${id}`);
+        const data = await res.json();
+        if (!res.ok || data.error) throw new Error(data.error || "Could not load idea");
+        renderIdeaDetail(data);
+        showView("ideas");
+        setStatus("Idea details ready.", "ok");
+      } catch (err) {
+        setStatus(String(err.message || err), "err");
+      }
     }
 
     function renderOpportunities(items) {

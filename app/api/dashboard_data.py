@@ -23,10 +23,11 @@ from app.models.db_models import (
     Review,
     TrendingApp,
 )
-from app.models.schemas import ReportOut
+from app.models.schemas import ProductIdeaOut, ReportOut
 from app.services.market_opportunity_service import list_market_opportunities
 from app.services.report_service import list_reports
 from app.utils.category_normalize import normalize_category
+from app.utils.idea_narrative import build_detail_sections
 
 router = APIRouter()
 
@@ -156,6 +157,28 @@ def run_daily_intelligence(
     )
 
 
+@router.get("/ideas/{idea_id}")
+def get_idea_detail(idea_id: int, db: Session = Depends(get_db)) -> dict:
+    row = db.get(ProductIdea, idea_id)
+    if row is None:
+        return {"error": "Idea not found"}
+
+    opportunity = None
+    if row.source_opportunity_id:
+        opp = db.get(MarketOpportunity, row.source_opportunity_id)
+        if opp is not None:
+            opportunity = _opportunity(opp)
+
+    return {
+        "idea": ProductIdeaOut.model_validate(row).model_dump(mode="json"),
+        "opportunity": opportunity,
+        "detail_sections": build_detail_sections(
+            ProductIdeaOut.model_validate(row).model_dump(mode="json"),
+            opportunity,
+        ),
+    }
+
+
 @router.get("/reports/{report_id}")
 def get_report_detail(report_id: int, db: Session = Depends(get_db)) -> dict:
     row = db.get(Report, report_id)
@@ -218,6 +241,7 @@ def _idea(row: ProductIdea) -> dict:
         "monetization_strategy": row.monetization_strategy,
         "confidence_score": row.confidence_score,
         "source_opportunity_id": row.source_opportunity_id,
+        "generated_at": row.generated_at.isoformat() if row.generated_at else None,
     }
 
 

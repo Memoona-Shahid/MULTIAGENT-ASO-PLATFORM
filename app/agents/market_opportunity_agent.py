@@ -19,6 +19,7 @@ from app.core.logging import logger
 from app.services.market_opportunity_client import MarketSignalClient
 from app.services.market_opportunity_service import save_market_opportunities
 from app.utils.category_normalize import infer_category_from_keyword, normalize_category
+from app.utils.idea_narrative import plain_problem_statement
 
 DEFAULT_MIN_SCORE = 45.0
 DEFAULT_MIN_KEYWORD_OPPORTUNITY = 55.0
@@ -170,15 +171,14 @@ class MarketOpportunityAgent:
                 continue
 
             title = self._opportunity_title(category, bucket)
+            pain_hint = self._pain_hint(bucket)
             opportunities.append({
                 "title": title,
                 "category": category,
-                "description": (
-                    f"{category} shows momentum ({len(bucket['trend_ids'])} trend signals, "
-                    f"{bucket['fast_growing_count']} fast-growing) with keyword upside "
-                    f"(avg opportunity {bucket['keyword_avg_opp']}) and user pain from reviews "
-                    f"({bucket['review_negative']} negative, {bucket['review_bugs']} bug mentions, "
-                    f"{bucket['review_requests']} feature requests)."
+                "description": plain_problem_statement(
+                    category=category,
+                    pain_hint=pain_hint,
+                    opportunity_title=title,
                 ),
                 "opportunity_score": score,
                 "supporting_evidence": {
@@ -208,3 +208,10 @@ class MarketOpportunityAgent:
         if len(bucket["trend_ids"]) >= 20:
             return f"{category}: strong chart presence, room for differentiation"
         return f"{category}: emerging market gap to validate"
+
+    def _pain_hint(self, bucket: dict) -> str:
+        if bucket["review_bugs"] or bucket["review_negative"] >= 3:
+            return "bugs, negative reviews, and unmet feature requests"
+        if bucket["keyword_ids"] and bucket["keyword_avg_opp"] >= 60:
+            return "high keyword demand with weak incumbent execution"
+        return "rising category demand with room for differentiation"

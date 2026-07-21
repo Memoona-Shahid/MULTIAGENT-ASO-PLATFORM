@@ -118,7 +118,8 @@ class OpenFangZeroClawRuntime(AgentRuntime):
         api_key: str | None = None,
         timeout: float | None = None,
     ):
-        self.base_url = (base_url or settings.openfang_zeroclaw_base_url or "").rstrip("/")
+        resolved_base_url = base_url if base_url is not None else settings.openfang_zeroclaw_base_url
+        self.base_url = (resolved_base_url or "").rstrip("/")
         self.api_key = api_key if api_key is not None else settings.openfang_zeroclaw_api_key
         self.timeout = timeout if timeout is not None else max(settings.request_timeout_seconds, 60)
         if not self.base_url:

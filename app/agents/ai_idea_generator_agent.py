@@ -18,6 +18,7 @@ from app.models.db_models import MarketOpportunity, ProductIdea
 from app.services.product_idea_client import ProductIdeaSourceClient
 from app.services.product_idea_service import save_product_ideas
 from app.utils.category_normalize import normalize_category
+from app.utils.idea_narrative import enrich_idea_dict
 
 DEFAULT_MIN_OPPORTUNITY_SCORE = 45.0
 DEFAULT_IDEAS_PER_OPPORTUNITY = 1
@@ -463,7 +464,7 @@ class AiIdeaGeneratorAgent:
 
         if concept:
             title = concept["title"]
-            solution = f"{concept['solution']} Market signal focus: {pain_hint}."
+            solution = concept["solution"]
             audience = concept["audience"]
             monetization = concept["monetization"]
             idea_type = concept.get("idea_type", idea_type)
@@ -477,16 +478,19 @@ class AiIdeaGeneratorAgent:
             audience = f"Users and operators underserved in {category.lower()}"
             monetization = "Freemium core with premium subscription for advanced features"
 
-        return {
-            "title": title,
-            "idea_type": idea_type,
-            "problem_statement": opportunity.description or opportunity.title,
-            "proposed_solution": solution,
-            "target_audience": audience,
-            "monetization_strategy": monetization,
-            "confidence_score": confidence,
-            "source_opportunity_id": opportunity.id,
-        }
+        return enrich_idea_dict(
+            {
+                "title": title,
+                "idea_type": idea_type,
+                "proposed_solution": solution,
+                "target_audience": audience,
+                "monetization_strategy": monetization,
+                "confidence_score": confidence,
+                "source_opportunity_id": opportunity.id,
+                "_pain_hint": pain_hint,
+            },
+            opportunity,
+        )
 
     def _pick_concept(
         self,

@@ -38,6 +38,8 @@ def test_agent_generates_and_saves_ideas(db_session):
     assert summary["total_ideas"] == 1
     assert ideas[0].source_opportunity_id == 1
     assert ideas[0].idea_type in {"mobile_app", "saas", "ai_product"}
+    assert "trend signals" not in (ideas[0].problem_statement or "").lower()
+    assert len(ideas[0].proposed_solution or "") > 80
 
 
 def test_agent_generates_ideas_for_explicit_id_even_if_below_min_score(db_session):
